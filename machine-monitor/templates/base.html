@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Maschinenstatus{% endblock %}</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0 auto; max-width: 960px; padding: 16px; color: #222; }
+    a { color: #0b5cad; }
+    table { border-collapse: collapse; width: 100%; margin-bottom: 24px; }
+    th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #ddd; }
+    .badge { padding: 2px 8px; border-radius: 10px; font-size: .85em; font-weight: 600; color: #fff; }
+    .RUNNING { background: #2e7d32; } .IDLE { background: #757575; }
+    .MAINTENANCE { background: #ef6c00; } .ERROR { background: #c62828; } .OFFLINE { background: #37474f; }
+    form textarea, form input { width: 100%; box-sizing: border-box; margin-bottom: 8px; font: inherit; }
+    .muted { color: #777; }
+  </style>
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <h1><a href="{{ url_for('index') }}" style="color:inherit;text-decoration:none">Maschinenstatus</a></h1>
+  {% block content %}{% endblock %}
+</body>
+</html>

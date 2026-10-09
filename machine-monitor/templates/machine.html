@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}{{ m.info.name or m.id }}{% endblock %}
+{% block content %}
+<h2>{{ m.info.name or m.id }}
+  {% if m.state %}<span class="badge {{ m.state }}">{{ m.state }}</span>{% endif %}</h2>
+
+<h3>Dokumentation</h3>
+<table>
+  <tr><th>ID</th><td>{{ m.id }}</td></tr>
+  {% for key, value in m.info.items() %}
+  <tr><th>{{ key }}</th>
+    <td>{% if value is string and value.startswith('http') %}<a href="{{ value }}" rel="noopener">{{ value }}</a>{% else %}{{ value }}{% endif %}</td></tr>
+  {% endfor %}
+</table>
+
+<h3>Logbuch</h3>
+<form method="post" action="{{ url_for('add_note', machine_id=m.id) }}">
+  <input name="author" placeholder="Name (optional)" maxlength="100">
+  <textarea name="text" rows="3" placeholder="z.B. Lager getauscht, Filter gereinigt…" required maxlength="2000"></textarea>
+  <button type="submit">Eintrag speichern</button>
+</form>
+<table>
+  {% for n in notes %}
+  <tr><td style="white-space:nowrap">{{ n.ts | dt }}</td><td>{{ n.author or '–' }}</td><td>{{ n.text }}</td></tr>
+  {% else %}
+  <tr><td class="muted">Keine Einträge.</td></tr>
+  {% endfor %}
+</table>
+
+<h3>Statusverlauf (letzte 100)</h3>
+<table>
+  <tr><th>Zeit</th><th>Status</th><th>Detail</th><th></th></tr>
+  {% for h in history %}
+  <tr>
+    <td>{{ h.ts | dt }}</td>
+    <td><span class="badge {{ h.state }}">{{ h.state }}</span></td>
+    <td>{{ h.detail or '' }}</td>
+    <td>{% if h.is_will %}<strong>Last Will</strong>{% endif %}</td>
+  </tr>
+  {% endfor %}
+</table>
+{% endblock %}

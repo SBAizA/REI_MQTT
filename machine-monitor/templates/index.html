@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block head %}<meta http-equiv="refresh" content="5">{% endblock %}
+{% block content %}
+<table>
+  <tr><th>Maschine</th><th>Standort</th><th>Status</th><th>Detail</th><th>Zuletzt gesehen</th></tr>
+  {% for m in machines %}
+  <tr>
+    <td><a href="{{ url_for('machine', machine_id=m.id) }}">{{ m.info.name or m.id }}</a></td>
+    <td>{{ m.info.location or '–' }}</td>
+    <td>{% if m.state %}<span class="badge {{ m.state }}">{{ m.state }}</span>{% else %}–{% endif %}</td>
+    <td>{{ m.detail or '' }}</td>
+    <td>{{ m.last_seen | dt }}</td>
+  </tr>
+  {% else %}
+  <tr><td colspan="5" class="muted">Noch keine Maschinen gemeldet.</td></tr>
+  {% endfor %}
+</table>
+<p class="muted">Aktualisiert sich alle 5 s.</p>
+{% endblock %}
