@@ -7,7 +7,7 @@ import socket
 import paho.mqtt.client as mqtt
 
 import db
-from common import STATES, Config, create_client, setup_logging
+from common import QOS_CRITICAL, QOS_RELIABLE, STATES, Config, create_client, setup_logging
 
 log = logging.getLogger("collector")
 
@@ -24,7 +24,12 @@ def main() -> None:
             log.error("Connect failed: %s", reason_code)
             return
         log.info("Connected to %s:%s", cfg.host, cfg.port)
-        client.subscribe([(cfg.topic("+", "status"), 1), (cfg.topic("+", "info"), 1)])
+        client.subscribe(
+            [
+                (cfg.topic("+", "status"), QOS_CRITICAL),
+                (cfg.topic("+", "info"), QOS_RELIABLE),
+            ]
+        )
 
     def on_message(client, userdata, msg: mqtt.MQTTMessage):
         parts = msg.topic.split("/")

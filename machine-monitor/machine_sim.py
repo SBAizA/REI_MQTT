@@ -15,7 +15,7 @@ import signal
 import threading
 import time
 
-from common import Config, create_client, setup_logging
+from common import QOS_CRITICAL, QOS_RELIABLE, Config, create_client, setup_logging, status_qos
 
 log = logging.getLogger("machine")
 
@@ -50,7 +50,12 @@ def main() -> None:
 
     client = create_client(cfg, f"machine-{args.machine_id}")
     # Last Will: sent by the broker if this client disappears without a clean disconnect.
-    client.will_set(status_topic, status_payload("ERROR", "connection lost", will=True), qos=1, retain=True)
+    client.will_set(
+        status_topic,
+        status_payload("ERROR", "connection lost", will=True),
+        qos=QOS_CRITICAL,
+        retain=True,
+    )
 
     info = {
         "name": args.name or args.machine_id,
@@ -64,7 +69,12 @@ def main() -> None:
             log.error("Connect failed: %s", reason_code)
             return
         log.info("Connected to %s:%s", cfg.host, cfg.port)
-        client.publish(cfg.topic(args.machine_id, "info"), json.dumps(info), qos=1, retain=True)
+        client.publish(
+            cfg.topic(args.machine_id, "info"),
+            json.dumps(info),
+            qos=QOS_RELIABLE,
+            retain=True,
+        )
 
     client.on_connect = on_connect
     client.connect_async(cfg.host, cfg.port, keepalive=10)
@@ -80,11 +90,21 @@ def main() -> None:
                 states, weights = NEXT_STATE[state]
                 state = random.choices(states, weights)[0]
                 detail = random.choice(ERROR_CODES) if state == "ERROR" else None
-                client.publish(status_topic, status_payload(state, detail), qos=1, retain=True)
+                client.publish(
+                    status_topic,
+                    status_payload(state, detail),
+                    qos=status_qos(state),
+                    retain=True,
+                )
                 log.info("%s %s", state, detail or "")
             stop.wait(args.interval)
     finally:
-        client.publish(status_topic, status_payload("OFFLINE", "shutdown"), qos=1, retain=True).wait_for_publish(2)
+        client.publish(
+            status_topic,
+            status_payload("OFFLINE", "shutdown"),
+            qos=QOS_RELIABLE,
+            retain=True,
+        ).wait_for_publish(2)
         client.disconnect()
         client.loop_stop()
 

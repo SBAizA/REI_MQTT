@@ -7,12 +7,16 @@ Maschine(n) ──MQTT──► Mosquitto (Raspi) ──► collector.py ──�
   status / info          retained + LWT
 ```
 
+Eine ausführlichere Beschreibung der Architektur, Topic-Namenskonvention,
+Payloads und QoS-Entscheidungen steht in der
+[Projektdokumentation](DOKUMENTATION.md).
+
 ## Komponenten
 
 | Datei | Aufgabe |
 |---|---|
 | `machine_sim.py` | Simuliert eine Maschine: sendet `info` (Doku), periodisch `status`, registriert Last Will |
-| `collector.py` | Abonniert `factory/+/status` und `factory/+/info`, schreibt in SQLite |
+| `collector.py` | Abonniert `factory/+/status` und `factory/+/info` mit den jeweils benötigten QoS-Stufen, schreibt in SQLite |
 | `web.py` + `templates/` | Dashboard (Übersicht, Detailseite mit Doku, Logbuch, Statusverlauf) + JSON-API |
 | `db.py` | SQLite-Schema und Zugriffe (WAL-Modus) |
 | `common.py` | Konfiguration (Umgebungsvariablen), Topics, MQTT-Client |
@@ -20,10 +24,20 @@ Maschine(n) ──MQTT──► Mosquitto (Raspi) ──► collector.py ──�
 
 ## Topics & Payloads
 
-| Topic | Retained | Payload |
-|---|---|---|
-| `factory/<id>/status` | ja | `{"state": "RUNNING", "detail": null, "ts": 1700000000, "will": false}` |
-| `factory/<id>/info` | ja | `{"name": "Presse 1", "model": "...", "location": "...", "manual_url": "..."}` |
+| Topic | Publish-QoS | Retained | Payload |
+|---|---:|---|---|
+| `factory/<id>/status` | 0 für laufende Status-Telemetrie, 1 für sauberes `OFFLINE`, 2 für `ERROR` und Last Will | ja | `{"state": "RUNNING", "detail": null, "ts": 1700000000, "will": false}` |
+| `factory/<id>/info` | 1 | ja | `{"name": "Presse 1", "model": "...", "location": "...", "manual_url": "..."}` |
+
+### QoS-Entscheidung
+
+Der Simulator und Collector verwenden alle drei MQTT-QoS-Stufen passend zur Nachricht:
+
+- **QoS 0** für regelmäßig wiederholte Status-Telemetrie (`RUNNING`, `IDLE`, `MAINTENANCE`). Ein einzelner Zwischenstand darf verloren gehen, weil bald ein neuer Status folgt; das reduziert Bestätigungsverkehr.
+- **QoS 1** für Maschineninformationen und den sauberen Shutdown-Status `OFFLINE`. Diese Nachrichten sollen zuverlässig ankommen; eine mögliche doppelte Zustellung ist hier unkritisch.
+- **QoS 2** für kritische `ERROR`-Statusmeldungen und das Last Will. Das MQTT-Protokoll stellt diese Nachricht genau einmal zu. Das kostet mehr Protokollverkehr und garantiert nicht, dass eine Anwendung eine Nebenwirkung genau einmal ausführt.
+
+Der Collector fordert für Status QoS 2 an, damit kritische Publikationen nicht durch die Subscription auf eine niedrigere QoS-Stufe begrenzt werden. Für `info` fordert er QoS 1 an. Die effektive Zustell-QoS kann nie höher sein als die QoS der Publikation oder des Abonnements.
 
 Gültige States: `RUNNING`, `IDLE`, `MAINTENANCE`, `ERROR`, `OFFLINE`.
 
